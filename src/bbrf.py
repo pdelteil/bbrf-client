@@ -4,7 +4,7 @@
 
 Usage:
   bbrf ( new | use | disable | enable | rm ) <program> [ -t key:value ]...
-  bbrf programs [ --show-disabled --show-empty-scope ]
+  bbrf programs [ --show-disabled --show-empty-scope --only-show-disabled]
   bbrf programs where <tag_name> is [ before | after ] <value> [ --show-disabled --show-empty-scope ]
   bbrf program ( active | update ( <program>... | - ) -t key:value... [--append-tags])
   bbrf domains [ --resolved [ --no-private ] | --unresolved | --view <view> ] [ -p <program> | ( --all [--show-disabled] ) ]
@@ -56,10 +56,10 @@ Options:
   -r, --root           When listing URLs, only list the roots of the URLs
   -w, --show-disabled  Combine with the flag --all/-A to include documents of disabled programs too
   -R, --resolved       When listing domains, only show resolved domain 
-  -u, --unresolved     When listing domains, only show unresolved domains
+*  -u, --unresolved     When listing domains, only show unresolved domains
   -x, --no-private     Combine with --resolved/-R, only show domains that don't resolve to a private IP address
   -y, --yes            Don't prompt for confirmation when deleting document or upgrading server
-  -f, --ignore-scope   Ignore the scope (i.e. force) when adding a domain, url, ip or service
+  -f, --ignore-scope   Ignore the scope (i.e. force) when adding a domain, url, ip or service.
 """
 
 import os
@@ -75,7 +75,7 @@ CONFIG_FILE = '~/.bbrf/config.json'
 REGEX_DOMAIN = re.compile('^(?:[a-z0-9_](?:[a-z0-9-_]{0,61}[a-z0-9])?\\.)+[a-z0-9][a-z0-9-]{0,61}[a-z0-9]$')
 # regex to match IP addresses and CIDR ranges - thanks https://www.regextester.com/93987
 REGEX_IP = re.compile('^([0-9]{1,3}\\.){3}[0-9]{1,3}(/([0-9]|[1-2][0-9]|3[0-2]))?$')
-VERSION = '1.3.2'
+VERSION = '1.3.3'
 
 class BBRFClient:
     config = {}
@@ -127,8 +127,8 @@ class BBRFClient:
         # and add it to the db
         self.api.create_new_program(self.get_program(), tags=self.arguments['-t'])
 
-    def list_programs(self, show_disabled, show_empty_scope):
-        return self.api.get_programs(show_disabled=show_disabled, show_empty_scope=show_empty_scope)
+    def list_programs(self, show_disabled, show_empty_scope, only_show_disabled):
+        return self.api.get_programs(show_disabled=show_disabled, show_empty_scope=show_empty_scope,only_show_disabled=only_show_disabled)
     
     # updating programs this way only supports tags for now
     def update_programs(self, programs):
@@ -168,7 +168,7 @@ class BBRFClient:
         pro = self.arguments['<program>']
         if type(pro) is list:
             pro = pro[0]
-        if check_exists and pro not in self.list_programs(True, True):
+        if check_exists and pro not in self.list_programs(True, True, False):
             raise Exception('This program does not exist.')
         self.config['program'] = pro
     
@@ -289,12 +289,12 @@ class BBRFClient:
             # not entirely sure this will ever occur, but hey (update: it does occur, as a result of crt.sh)
             # it makes sense to do this here, because it will still check whether it is in scope
             # before extending the existing scope.
-            if domain.startswith('*.'):
-                domain = domain[2:]
+            #if domain.startswith('*.'):
+            #    domain = domain[2:]
                 # if it matches the existing scope definition,
                 # add this wildcard to the scope too
-                if REGEX_DOMAIN.match(domain) and not self.matches_scope(domain, outscope) and self.matches_scope(domain, inscope):
-                    add_inscope.append('*.'+domain)
+            #    if REGEX_DOMAIN.match(domain) and not self.matches_scope(domain, outscope) and self.matches_scope(domain, inscope):
+            #        add_inscope.append('*.'+domain)
                     
             # Avoid adding blacklisted domains or
             # domains that resolve to blacklisted ips
@@ -1027,7 +1027,7 @@ class BBRFClient:
         if self.arguments['programs']:
             if self.arguments['where']:
                 return self.search_tags("program")
-            return self.list_programs(self.arguments['--show-disabled'], self.arguments['--show-empty-scope'])
+            return self.list_programs(self.arguments['--show-disabled'], self.arguments['--show-empty-scope'],self.arguments['--only-show-disabled'])
             
         if self.arguments['program']:
             if self.arguments['active']:

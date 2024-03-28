@@ -190,10 +190,15 @@ class BBRFApi:
     '''
     Get a list of all programs.
     '''
-    def get_programs(self, show_disabled=False, show_empty_scope=False):
+    def get_programs(self, show_disabled=False, show_empty_scope=False, only_show_disabled=False):
+        #disabled and enabled
         if show_disabled:
             r = self.requests_session.get(self.BBRF_API+'/_design/bbrf/_view/programs?reduce=false', headers={"Authorization": self.auth})
-        else:
+        #only disabled
+        if only_show_disabled:
+            r = self.requests_session.get(self.BBRF_API+'/_design/bbrf/_view/programs?reduce=false&key=true', headers={"Authorization": self.auth})
+        #only enabled
+        if not only_show_disabled and not show_disabled:
             r = self.requests_session.get(self.BBRF_API+'/_design/bbrf/_view/programs?reduce=false&key=false', headers={"Authorization": self.auth})
         if 'error' in r.json():
             raise Exception('BBRF server error: '+r.json()['error'])
